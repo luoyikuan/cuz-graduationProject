@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="LYK">
+    <title>智能LED照明控制系统</title>
+    <div th:replace="linkAndScript"></div>
+    <div th:replace="server"></div>
+    <script th:src="@{/js/mqtt.min.js}"></script>
+</head>
+
+<body>
+    <!-- 头部开始 -->
+    <header th:replace="header"></header>
+    <!-- 头部结束 -->
+
+    <!-- 主体开始 -->
+    <div class="container" style="padding-top: 15px;">
+        <!-- 添加设备开始 -->
+        <div class="row">
+            <div class="col clearfix">
+                <button type="button" data-bs-toggle="collapse" data-bs-target="#mcuCollapse"
+                    class="btn btn-primary float-end">添加设备</button>
+            </div>
+            <div class="row">
+                <div class="collapse" id="mcuCollapse" style="padding: 15px 0;">
+                    <div class="card card-body">
+                        <form id="form_createMcu">
+                            <div class="mb-3">
+                                <label for="input_mcuMac" class="form-label">MAC地址:</label>
+                                <input type="text" name="mac" class="form-control" id="input_mcuMac"
+                                    placeholder="请输入设备MAC地址" value="">
+                            </div>
+                            <div class="mb-3">
+                                <label for="input_mcuToken" class="form-label">密钥:</label>
+                                <input type="password" name="token" class="form-control" id="input_mcuToken"
+                                    placeholder="请输入设备密钥" value="">
+                            </div>
+                            <div class="mb-3">
+                                <div id="create_info" class="form-text"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">添加</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 添加设备结束 -->
+
+        <!-- 设备列表开始 -->
+        <table class="table table-hover" id="mcuList">
+            <thead>
+                <tr>
+                    <th scope="col">MAC地址</th>
+                    <th scope="col">实时光照</th>
+                    <th scope="col">设备模式</th>
+                    <th scope="col">灯光状态</th>
+                    <th scope="col">灯光颜色</th>
+                    <th scope="col">首次接入</th>
+                    <th scope="col">最后在线</th>
+                    <th scope="col">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:if="${mcuList.isEmpty}">
+                    <td colspan="8" class="text-center">无绑定设备</td>
+                </tr>
+                <tr th:each="mcu:${mcuList}" th:mcu-mac="${mcu.mac}">
+                    <th scope="row" th:text="${mcu.mac}"></th>
+                    <td class="mcuInfoLight">-</td>
+                    <td class="mcuInfoMode">
+                    	<div class="form-check form-switch">
+	                    	<input class="form-check-input" type="checkbox" role="switch" disabled/>
+	                    	<label class="form-check-label">-</label>
+                    	</div>
+                    </td>
+                    <td class="mcuInfoState">
+                    	<div class="form-check form-switch">
+	                    	<input class="form-check-input" type="checkbox" role="switch" disabled/>
+	                    	<label class="form-check-label">-</label>
+                    	</div>
+                    </td>
+                    <td class="mcuInfoColor">
+                    	<span style="border: 1px solid black; cursor: pointer;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    	<input type="color" style="width: 0; height: 0; border: 0;padding: 0; margin: 0;"/>
+                    </td>
+                    <td th:text="${#dates.format(mcu.createTime,'yyyy-MM-dd HH:mm:ss')}"></td>
+                    <td th:text="${#dates.format(mcu.lastTime,'yyyy-MM-dd HH:mm:ss')}"></td>
+                    <td>
+                        <a type="button" class="btn btn-sm btn-success" th:href="@{/data/list/}+${mcu.id}+'-1'">查看</a>
+                        <button class="btn btn-sm btn-danger" th:onclick="removeMcu([[${mcu.id}]])">解绑</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <!-- 设备列表结束 -->
+
+    </div>
+    <!-- 主体结束 -->
+    <!-- 底部开始 -->
+    <footer th:replace="footer"></footer>
+    <!-- 底部结束 -->
+
+    <script>
+    	// 绑定设备
+        $("#form_createMcu").submit(() => {
+            let form = $("#form_createMcu").serialize();
+            $.ajax({
+                url: server.mcu.add,
+                type: "POST",
+                data: form,
+                success: (resp) => {
+                    if (resp.code == 100) {
+                        window.location.href = server.mcu.list;
+                    } else {
+                        alert("添加设备失败,请检MAC地址和密钥,或者确保设备上线。");
+                    }
+                }
+            });
+            return false;
+        });
+        // 解绑设备
+        function removeMcu(id) {
+			if (!window.confirm("确认解绑吗?")) return;
+			$.ajax({
+				url: server.mcu.remove,
+                type: "POST",
+                data: {id: id},
+                success: (resp) => {
+					if (resp.code == 100) {
+						window.location.href = server.mcu.list;
+					} else {
+                        alert("解绑设备失败");
+                    }
+				}
+			});
+		}
+		// 设备实时上报的数据处理
+		const mqttClient = mqtt.connect(server.mqtt);
+		mqttClient.on('connect', function() {
+			$('#mcuList>tbody>tr[mcu-mac]').each(function() {
+				let mac = $(this).attr('mcu-mac');
+				mqttClient.subscribe('mcu/data/' + mac);
+			});
+		});
+		mqttClient.on('message', (topic, message) => {
+			let resp = JSON.parse(message.toString());
+			let light = resp.light;
+			let auto = resp.auto;
+			let state = resp.state;
+			let color = parseInt(resp.color);
+			let mac = "'" + topic.substring(9) + "'";
+			
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoLight').text(light);
+			
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoMode input').prop('checked', auto);
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoMode input').attr('disabled', false);
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoMode label').text(auto ? '自动' : '手动');
+			
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoState input').prop('checked', state);
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoState input').attr('disabled', auto);
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoState label').text(state ? '点亮' : '熄灭');
+			
+			let r = (color >> 16) & 0xFF;
+			let g = (color >> 8) & 0xFF;
+			let b = color & 0xFF;
+			let rgb = 'rgb(' + r + ',' + g + ',' + b +')';
+			$('#mcuList>tbody>tr[mcu-mac=' + mac + '] .mcuInfoColor span').css('background-color', rgb);
+		});
+		// 模式按钮被点击
+		$('#mcuList>tbody .mcuInfoMode input').click(function() {
+			let mac = $(this).parents('[mcu-mac]').attr('mcu-mac');
+			let auto = $(this).prop('checked');
+			
+			$(this).attr('disabled', true);
+			$(this).next().text(auto ? '自动' : '手动');
+			if (auto) {
+				$(this).parents('[mcu-mac]').find('.mcuInfoState input').attr('disabled', true);
+			}
+			
+			let msg = {cmd: 'auto', data: auto};
+			mqttClient.publish('mcu/cmd/' + mac, JSON.stringify(msg));
+		});
+		// 灯光状态按钮
+		$('#mcuList>tbody .mcuInfoState input').click(function() {
+			let mac = $(this).parents('[mcu-mac]').attr('mcu-mac');
+			let state = $(this).prop('checked');
+			
+			$(this).attr('disabled', true);
+			$(this).next().text(state ? '点亮' : '熄灭');
+			
+			let msg = {cmd: 'state', data: state};
+			mqttClient.publish('mcu/cmd/' + mac, JSON.stringify(msg));
+		});
+		// 灯光颜色选择
+		$('#mcuList>tbody .mcuInfoColor span').click(function() {
+			$(this).next().click();
+		});
+		$('#mcuList>tbody .mcuInfoColor input').change(function() {
+			let mac = $(this).parents('[mcu-mac]').attr('mcu-mac');
+			let color = parseInt($(this).val().substring(1), 16);
+			
+			$(this).prev().css('background-color', $(this).val());
+			
+			let msg = {cmd: 'color', data: color};
+			mqttClient.publish('mcu/cmd/' + mac, JSON.stringify(msg));
+		});
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,20 @@
+<script>
+	const server = {
+		user: {
+			register: '[[@{/user/register}]]',
+			login: '[[@{/user/login}]]'
+		},
+		mcu: {
+			list: '[[@{/mcu/list}]]',
+			add: '[[@{/mcu/add}]]',
+			remove: '[[@{/mcu/remove}]]'
+		},
+		data: {
+			del: '[[@{/data/del}]]'
+		},
+		mqtt: 'ws://127.0.0.1:61614'
+	};
+
+	var msg = '[[${msg}]]';
+	if (msg) alert(msg);
+</script>

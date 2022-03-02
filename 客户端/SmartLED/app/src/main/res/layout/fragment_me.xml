@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="5dp"
+    tools:context=".fragment.MeFragment">
+
+
+    <EditText
+        android:id="@+id/editTextOldLoginPwd"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="请输入原密码"
+        android:inputType="textPassword" />
+
+    <EditText
+        android:id="@+id/editTextNewLoginPwd"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="请输入新密码"
+        android:inputType="textPassword" />
+
+    <EditText
+        android:id="@+id/editTextTwoLoginPwd"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="请确认新密码"
+        android:inputType="textPassword" />
+
+    <Button
+        android:id="@+id/btnChangeLoginPwd"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="修改密码" />
+
+    <Button
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="退出" />
+
+
+</LinearLayout>
