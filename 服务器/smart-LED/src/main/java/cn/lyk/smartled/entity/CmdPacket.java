@@ -10,6 +10,33 @@ public class CmdPacket {
 
 	private String cmd;
 	private String data;
+	
+	@Override
+	public String toString() {
+		if (!verify()) {
+			return "{}";
+		}
+
+		Map<String, Object> map = new HashMap<>();
+		map.put("cmd", this.cmd);
+
+		if (CMD_AUTO.equals(cmd) || CMD_STATE.equals(cmd)) {
+			map.put("data", data.equals(BOOL_TRUE));
+		} else {
+			map.put("data", data);
+		}
+
+		ObjectMapper objectMapper = new ObjectMapper();
+		String str = null;
+		try {
+			str = objectMapper.writeValueAsString(map);
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+			str = "{}";
+		}
+
+		return str;
+	}
 
 	public boolean verify() {
 		if (CMD_AUTO.equals(cmd)) {
