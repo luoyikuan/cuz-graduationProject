@@ -32,22 +32,14 @@ public class McuService {
 		if (cmdPacket == null || !cmdPacket.verify()) {
 			return;
 		}
-
+		
 		Mcu mcu = mcuMapper.selectById(mcuId);
 		if (mcu == null || !userId.equals(mcu.getUserId())) {
 			return;
 		}
 
-		ObjectMapper objectMapper = new ObjectMapper();
-		String cmd = null;
-		try {
-			cmd = objectMapper.writeValueAsString(cmdPacket);
-		} catch (JsonProcessingException e) {
-			e.printStackTrace();
-		}
-
 		String destination = "mcu.cmd." + mcu.getMac();
-		jmsMessagingTemplate.convertAndSend(destination, cmd);
+		jmsMessagingTemplate.convertAndSend(destination, cmdPacket.toString());
 	}
 
 	/**
